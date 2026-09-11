@@ -1,1 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who Is This?</title>
+<style>
+  :root{
+    --ink:#16212B; --muted:#5D6C7A; --page:#E4E9ED; --card:#FFFFFF;
+    --line:#C9D3DA; --gold:#9C7A16; --green:#1C6F52; --focus:#2B6CB0;
+    --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:20px 18px 56px}
 
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+         padding-bottom:12px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+  h1{font-size:19px;font-weight:600;margin:0;letter-spacing:.01em}
+  .count{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  .dots{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px}
+  .dot{width:11px;height:11px;border-radius:50%;border:1px solid var(--line);
+       background:transparent;padding:0;cursor:pointer}
+  .dot.done{background:var(--green);border-color:var(--green)}
+  .dot.here{box-shadow:0 0 0 3px rgba(43,108,176,.28)}
+
+  figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:6px;
+         overflow:hidden}
+  figure #photo svg{display:block;width:100%;height:auto}
+  figure img{display:block;width:100%;height:auto}
+  figcaption{font-size:14px;color:var(--muted);padding:10px 14px;border-top:1px solid var(--line)}
+
+  .ask{font-family:var(--serif);font-size:20px;margin:22px 0 4px}
+  .ask small{display:block;font-family:var(--sans);font-size:14px;color:var(--muted);
+             margin-top:5px;font-weight:400}
+
+  ol{list-style:none;margin:18px 0 0;padding:0}
+  li{border-top:1px solid var(--line);padding:14px 0 16px;display:flex;gap:14px}
+  li:last-child{border-bottom:1px solid var(--line)}
+  .n{flex:0 0 26px;height:26px;border-radius:50%;border:1px solid var(--line);
+     display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);
+     margin-top:2px}
+  li.open .n{border-color:var(--gold);color:var(--gold)}
+  li.said .n{background:var(--green);border-color:var(--green);color:#fff}
+  .body{flex:1;min-width:0}
+
+  .kw{font-size:31px;line-height:1.15;font-weight:600;margin:0 0 2px;letter-spacing:-.01em}
+  .sent{font-family:var(--serif);font-size:21px;line-height:1.45;margin:12px 0 0}
+  .shush{color:var(--muted);font-size:15px;padding-top:4px}
+
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+  button{font:inherit;cursor:pointer;border-radius:5px;border:1px solid var(--line);
+         background:var(--card);color:var(--ink);padding:9px 14px;font-size:15px}
+  button:hover{border-color:var(--muted)}
+  button:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  .primary{background:var(--ink);border-color:var(--ink);color:#fff}
+  .primary:hover{background:#22303e}
+  .say{padding:9px 12px}
+  .tick{border-color:var(--green);color:var(--green)}
+  .tick[aria-pressed="true"]{background:var(--green);color:#fff}
+
+  nav{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:26px}
+  .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .acts button{flex:1 1 auto}
+  button.link{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:14px;padding:4px;cursor:pointer}
+  button.n{font-family:inherit;cursor:pointer;border:none}
+  .tally{font-size:14px;color:var(--muted);text-align:center;margin-top:22px}
+  @media (max-width:520px){
+    .kw{font-size:26px} .sent{font-size:19px} .ask{font-size:18px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Who Is This?</h1>
+    <div class="count" id="count"></div>
+  </header>
+
+  <div class="dots" id="dots"></div>
+
+  <figure>
+    <div id="photo" role="img" aria-label="A person at work"></div>
+    <figcaption id="cap"></figcaption>
+  </figure>
+
+  <p class="ask">Who is this? Tell me about their job.
+    <small>Who is this? What do they need? Why? Where do they work? Why do we need them?</small>
+  </p>
+
+  <ol id="hints"></ol>
+
+  <div class="acts">
+    <button id="hideall">Hide all hints</button>
+    <button id="done" class="primary">Done with this person</button>
+  </div>
+
+  <nav>
+    <button id="prev">Back</button>
+    <button id="shuffle">Shuffle cards</button>
+    <button id="next" class="primary">Next person</button>
+  </nav>
+
+  <p class="tally" id="restartline"><button id="restart" class="link">Start the whole set again</button></p>
+
+  <p class="tally" id="tally"></p>
+</div>
+
+<script>
+const HOUSES = [{"title": "Soldier", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#E8EADF\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#4E583A\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#4E583A\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#342E26\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#342E26\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#4E583A\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#4E583A\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#4E583A\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M324 120 a56 56 0 0 1 112 0z\" fill=\"#485238\"/><rect x=\"320\" y=\"114\" width=\"120\" height=\"16\" rx=\"8\" fill=\"#3E482E\"/><line x1=\"340\" y1=\"190\" x2=\"430\" y2=\"300\" stroke=\"#3C3228\" stroke-width=\"12\"/></svg>", "hints": [{"k": "a soldier", "s": "This person is a soldier."}, {"k": "uniform and boots", "s": "A soldier needs a uniform, boots and a helmet."}, {"k": "to stay safe", "s": "The helmet and heavy boots keep a soldier safe."}, {"k": "in the army", "s": "Soldiers work in the army, on a base or out in the field."}, {"k": "to keep us safe", "s": "We need soldiers to defend the country and to help in floods and earthquakes."}]}, {"title": "Dancer", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#F5E4EC\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><path d=\"M328 170 L432 170 L510 418 L250 418 Z\" fill=\"#C43668\"/><path d=\"M328 170 L432 170 L460 288 L300 288 Z\" fill=\"#D65482\"/><rect x=\"322\" y=\"418\" width=\"50\" height=\"100\" rx=\"18\" fill=\"#E2C4AA\"/><rect x=\"388\" y=\"418\" width=\"50\" height=\"100\" rx=\"18\" fill=\"#E2C4AA\"/><line x1=\"334\" y1=\"188\" x2=\"250\" y2=\"108\" stroke=\"#D6A882\" stroke-width=\"28\" stroke-linecap=\"round\"/><line x1=\"426\" y1=\"188\" x2=\"510\" y2=\"108\" stroke=\"#D6A882\" stroke-width=\"28\" stroke-linecap=\"round\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#1E1614\"/><rect x=\"328\" y=\"108\" width=\"24\" height=\"82\" rx=\"12\" fill=\"#1E1614\"/><rect x=\"408\" y=\"108\" width=\"24\" height=\"82\" rx=\"12\" fill=\"#1E1614\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/></svg>", "hints": [{"k": "a dancer", "s": "This person is a dancer."}, {"k": "costume and makeup", "s": "A dancer needs a costume, makeup and the right shoes."}, {"k": "to look the part", "s": "Dancers perform in front of people, so they need to look bright on the stage."}, {"k": "in a theatre", "s": "Dancers work in a dance academy, a theatre, or in films."}, {"k": "to entertain us", "s": "We need dancers to entertain us and to tell stories with movement."}]}, {"title": "Doctor", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#DCEAF2\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#46607A\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#46607A\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#3C3C42\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#3C3C42\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#F8FAFC\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#F8FAFC\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#F8FAFC\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M340 180 q40 70 80 0\" stroke=\"#2E3A46\" stroke-width=\"9\" fill=\"none\"/><line x1=\"420\" y1=\"212\" x2=\"432\" y2=\"286\" stroke=\"#2E3A46\" stroke-width=\"9\"/><circle cx=\"433\" cy=\"297\" r=\"15\" fill=\"#96A0AC\"/><rect x=\"394\" y=\"300\" width=\"48\" height=\"44\" fill=\"#E4EAF0\"/></svg>", "hints": [{"k": "a doctor", "s": "This person is a doctor."}, {"k": "a stethoscope", "s": "A doctor needs a stethoscope, a white coat and medicines."}, {"k": "to examine you", "s": "The stethoscope lets a doctor listen to your heart and your breathing."}, {"k": "in a hospital", "s": "Doctors work in a hospital or in a clinic."}, {"k": "to make us better", "s": "We need doctors to look after us when we are unwell."}]}, {"title": "Teacher", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#F0E6D4\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><rect x=\"40\" y=\"90\" width=\"210\" height=\"210\" rx=\"10\" fill=\"#2A3A2E\"/><rect x=\"48\" y=\"98\" width=\"194\" height=\"194\" rx=\"6\" fill=\"#34483A\"/><line x1=\"70\" y1=\"150\" x2=\"214\" y2=\"150\" stroke=\"#E8ECE4\" stroke-width=\"7\"/><line x1=\"70\" y1=\"196\" x2=\"180\" y2=\"196\" stroke=\"#E8ECE4\" stroke-width=\"7\"/><line x1=\"70\" y1=\"242\" x2=\"206\" y2=\"242\" stroke=\"#E8ECE4\" stroke-width=\"7\"/><rect x=\"362\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#403A36\"/><rect x=\"428\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#403A36\"/><rect x=\"354\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#3A2C24\"/><rect x=\"426\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#3A2C24\"/><rect x=\"305\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#8E6030\"/><rect x=\"485\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#8E6030\"/><rect x=\"345\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#8E6030\"/><circle cx=\"420\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M374 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"406\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"434\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M405 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><rect x=\"302\" y=\"300\" width=\"88\" height=\"52\" rx=\"6\" fill=\"#BE4236\"/></svg>", "hints": [{"k": "a teacher", "s": "This person is a teacher."}, {"k": "books and a board", "s": "A teacher needs books, a whiteboard and pens."}, {"k": "to explain things", "s": "The board lets a teacher show the whole class at once."}, {"k": "in a school", "s": "Teachers work in a school, a college or at home."}, {"k": "to help us learn", "s": "We need teachers so that we can learn to read, write and think."}]}, {"title": "Firefighter", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#F5DED6\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#C45422\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#C45422\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#2C282A\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#2C282A\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#C45422\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#C45422\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#C45422\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><rect x=\"305\" y=\"240\" width=\"150\" height=\"18\" fill=\"#F0E078\"/><rect x=\"305\" y=\"282\" width=\"150\" height=\"18\" fill=\"#F0E078\"/><path d=\"M322 120 a58 58 0 0 1 116 0z\" fill=\"#D63E28\"/><rect x=\"308\" y=\"112\" width=\"144\" height=\"22\" rx=\"10\" fill=\"#E8563A\"/><rect x=\"364\" y=\"80\" width=\"32\" height=\"40\" fill=\"#F8EEC8\"/></svg>", "hints": [{"k": "a firefighter", "s": "This person is a firefighter."}, {"k": "a hose and helmet", "s": "A firefighter needs a hose, a helmet and a thick jacket."}, {"k": "to fight the fire", "s": "The thick jacket and helmet stop the firefighter getting burnt."}, {"k": "at a fire station", "s": "Firefighters work from a fire station and rush out in a fire engine."}, {"k": "to put out fires", "s": "We need firefighters to put out fires and to rescue people."}]}, {"title": "Chef", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#DEEDE3\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#3C3E46\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#3C3E46\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#2C2A2E\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#2C2A2E\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#FAFAF8\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#FAFAF8\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#FAFAF8\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><rect x=\"328\" y=\"26\" width=\"104\" height=\"84\" rx=\"34\" fill=\"#FCFCFA\"/><rect x=\"334\" y=\"96\" width=\"92\" height=\"36\" rx=\"8\" fill=\"#EEEEEC\"/><circle cx=\"356\" cy=\"222\" r=\"6\" fill=\"#BEC2C8\"/><circle cx=\"404\" cy=\"222\" r=\"6\" fill=\"#BEC2C8\"/><circle cx=\"356\" cy=\"258\" r=\"6\" fill=\"#BEC2C8\"/><circle cx=\"404\" cy=\"258\" r=\"6\" fill=\"#BEC2C8\"/><circle cx=\"356\" cy=\"294\" r=\"6\" fill=\"#BEC2C8\"/><circle cx=\"404\" cy=\"294\" r=\"6\" fill=\"#BEC2C8\"/><ellipse cx=\"524\" cy=\"306\" rx=\"48\" ry=\"20\" fill=\"#46484E\"/><rect x=\"430\" y=\"300\" width=\"54\" height=\"12\" fill=\"#46484E\"/></svg>", "hints": [{"k": "a chef", "s": "This person is a chef."}, {"k": "knives and pans", "s": "A chef needs knives, pans, an apron and a tall hat."}, {"k": "to cook the food", "s": "The apron keeps the chef clean and the knives cut everything up."}, {"k": "in a kitchen", "s": "Chefs work in the kitchen of a restaurant or a hotel."}, {"k": "to feed people", "s": "We need chefs to cook food for lots of people at once."}]}, {"title": "Farmer", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#E9EFD8\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><circle cx=\"660\" cy=\"90\" r=\"40\" fill=\"#F6D66E\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#5E563E\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#5E563E\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#4A3A28\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#4A3A28\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#5C7C36\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#5C7C36\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#5C7C36\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><rect x=\"342\" y=\"168\" width=\"18\" height=\"82\" fill=\"#4A66965\"/><rect x=\"342\" y=\"168\" width=\"18\" height=\"82\" fill=\"#4A6696\"/><rect x=\"400\" y=\"168\" width=\"18\" height=\"82\" fill=\"#4A6696\"/><rect x=\"328\" y=\"248\" width=\"104\" height=\"92\" fill=\"#4A6696\"/><ellipse cx=\"380\" cy=\"121\" rx=\"92\" ry=\"25\" fill=\"#D6B260\"/><path d=\"M328 121 a52 52 0 0 1 104 0z\" fill=\"#E0BE6E\"/></svg>", "hints": [{"k": "a farmer", "s": "This person is a farmer."}, {"k": "a tractor and tools", "s": "A farmer needs a tractor, tools, seeds and water."}, {"k": "to grow the crops", "s": "The tractor ploughs the field so the seeds can go in."}, {"k": "on a farm", "s": "Farmers work outside, on a farm, in all kinds of weather."}, {"k": "to grow our food", "s": "We need farmers because all our food starts on a farm."}]}, {"title": "Pilot", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#DCE4F0\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><path d=\"M560 90 L680 120 L560 150 Z\" fill=\"#E2E8F0\"/><path d=\"M600 118 L640 60 L650 120 Z\" fill=\"#CED6E2\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#24345C\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#24345C\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#1E1E24\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#1E1E24\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#24345C\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#24345C\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#24345C\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M326 116 a54 54 0 0 1 108 0z\" fill=\"#1E2C50\"/><rect x=\"322\" y=\"110\" width=\"116\" height=\"16\" rx=\"6\" fill=\"#18243F\"/><rect x=\"310\" y=\"122\" width=\"88\" height=\"16\" rx=\"8\" fill=\"#181E30\"/><circle cx=\"380\" cy=\"98\" r=\"13\" fill=\"#E2C664\"/><rect x=\"296\" y=\"178\" width=\"30\" height=\"14\" fill=\"#F0F0F4\"/><rect x=\"434\" y=\"178\" width=\"30\" height=\"14\" fill=\"#F0F0F4\"/></svg>", "hints": [{"k": "a pilot", "s": "This person is a pilot."}, {"k": "a plane", "s": "A pilot needs a plane, a uniform and a headset."}, {"k": "to talk to the tower", "s": "The headset lets the pilot talk to the control tower on the ground."}, {"k": "in an aeroplane", "s": "Pilots work in the cockpit of an aeroplane, high above the clouds."}, {"k": "to fly us places", "s": "We need pilots to fly people and parcels around the world."}]}, {"title": "Nurse", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#D9EEEB\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#4AA69E\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#4AA69E\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#FAFAFA\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#FAFAFA\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#4AA69E\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#4AA69E\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#4AA69E\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#3C2A20\"/><rect x=\"328\" y=\"108\" width=\"24\" height=\"82\" rx=\"12\" fill=\"#3C2A20\"/><rect x=\"408\" y=\"108\" width=\"24\" height=\"82\" rx=\"12\" fill=\"#3C2A20\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M354 168 L406 168 L380 210 Z\" fill=\"#D6A882\"/><rect x=\"265\" y=\"268\" width=\"50\" height=\"50\" rx=\"18\" fill=\"#EEF2F6\"/><rect x=\"445\" y=\"268\" width=\"50\" height=\"50\" rx=\"18\" fill=\"#EEF2F6\"/><rect x=\"410\" y=\"238\" width=\"12\" height=\"36\" fill=\"#F0F6F8\"/><rect x=\"398\" y=\"250\" width=\"36\" height=\"12\" fill=\"#F0F6F8\"/></svg>", "hints": [{"k": "a nurse", "s": "This person is a nurse."}, {"k": "scrubs and gloves", "s": "A nurse needs scrubs, gloves and a thermometer."}, {"k": "to keep it clean", "s": "Gloves stop germs passing from one patient to another."}, {"k": "in a hospital", "s": "Nurses work in a hospital, a clinic, or they visit people at home."}, {"k": "to care for us", "s": "We need nurses to look after patients all day and all night."}]}, {"title": "Police officer", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#DDE2EE\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#242C46\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#242C46\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#1E1E22\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#1E1E22\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#2C3A60\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#2C3A60\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#2C3A60\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M326 118 a54 54 0 0 1 108 0z\" fill=\"#222E4E\"/><rect x=\"310\" y=\"120\" width=\"88\" height=\"16\" rx=\"8\" fill=\"#181E30\"/><path d=\"M334 206 L350 196 L366 206 L360 226 L340 226 Z\" fill=\"#E8C860\"/><line x1=\"433\" y1=\"192\" x2=\"433\" y2=\"166\" stroke=\"#28282C\" stroke-width=\"5\"/><rect x=\"420\" y=\"192\" width=\"26\" height=\"46\" rx=\"6\" fill=\"#28282C\"/></svg>", "hints": [{"k": "a police officer", "s": "This person is a police officer."}, {"k": "a uniform and radio", "s": "A police officer needs a uniform, a radio and a badge."}, {"k": "to call for help", "s": "The radio lets them call other officers if they need help."}, {"k": "in the community", "s": "Police officers work at a police station and out on the streets."}, {"k": "to keep us safe", "s": "We need police officers to keep people safe and to stop crime."}]}, {"title": "Engineer", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#E6E2EE\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><line x1=\"90\" y1=\"420\" x2=\"90\" y2=\"90\" stroke=\"#969EA8\" stroke-width=\"12\"/><line x1=\"84\" y1=\"100\" x2=\"300\" y2=\"100\" stroke=\"#969EA8\" stroke-width=\"12\"/><line x1=\"260\" y1=\"106\" x2=\"260\" y2=\"180\" stroke=\"#969EA8\" stroke-width=\"6\"/><rect x=\"342\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#545C6E\"/><rect x=\"408\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#545C6E\"/><rect x=\"334\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#3C342C\"/><rect x=\"406\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#3C342C\"/><rect x=\"285\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#E8BC48\"/><rect x=\"465\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#E8BC48\"/><rect x=\"325\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#E8BC48\"/><circle cx=\"400\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M354 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"386\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"414\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M385 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M344 118 a56 56 0 0 1 112 0z\" fill=\"#F0A628\"/><rect x=\"328\" y=\"110\" width=\"144\" height=\"18\" rx=\"8\" fill=\"#E29622\"/><rect x=\"394\" y=\"72\" width=\"12\" height=\"46\" fill=\"#FAC45A\"/><rect x=\"325\" y=\"250\" width=\"150\" height=\"16\" fill=\"#F0F4F8\"/><rect x=\"264\" y=\"280\" width=\"30\" height=\"100\" rx=\"12\" fill=\"#D8E2EC\"/></svg>", "hints": [{"k": "an engineer", "s": "This person is an engineer."}, {"k": "a helmet and plans", "s": "An engineer needs a hard hat, drawings and a computer."}, {"k": "to build it right", "s": "The drawings show exactly how a bridge or a building must be built."}, {"k": "on a site", "s": "Engineers work on a building site or in an office."}, {"k": "to build things", "s": "We need engineers to design roads, bridges, buildings and machines."}]}, {"title": "Musician", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 760 520\"><rect width=\"760\" height=\"520\" fill=\"#F0E2D2\"/><rect y=\"430\" width=\"760\" height=\"90\" fill=\"rgba(0,0,0,.05)\"/><line x1=\"160\" y1=\"470\" x2=\"160\" y2=\"150\" stroke=\"#5A5E66\" stroke-width=\"8\"/><circle cx=\"161\" cy=\"141\" r=\"21\" fill=\"#3C3E46\"/><rect x=\"322\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#34363E\"/><rect x=\"388\" y=\"354\" width=\"50\" height=\"120\" rx=\"18\" fill=\"#34363E\"/><rect x=\"314\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#262428\"/><rect x=\"386\" y=\"472\" width=\"60\" height=\"26\" rx=\"10\" fill=\"#262428\"/><rect x=\"265\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#A85628\"/><rect x=\"445\" y=\"180\" width=\"50\" height=\"136\" rx=\"24\" fill=\"#A85628\"/><rect x=\"305\" y=\"166\" width=\"150\" height=\"190\" rx=\"34\" fill=\"#A85628\"/><circle cx=\"380\" cy=\"118\" r=\"46\" fill=\"#D6A882\"/><path d=\"M334 118 a46 46 0 0 1 92 0z\" fill=\"#2D231E\"/><circle cx=\"366\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><circle cx=\"394\" cy=\"116\" r=\"4\" fill=\"#2A1E1A\"/><path d=\"M365 134 q15 14 30 0\" stroke=\"#8A4A3E\" stroke-width=\"4\" fill=\"none\" stroke-linecap=\"round\"/><path d=\"M488 298 L610 190 L628 210 L506 316 Z\" fill=\"#60422452\"/><path d=\"M488 298 L610 190 L628 210 L506 316 Z\" fill=\"#604224\"/><rect x=\"604\" y=\"170\" width=\"38\" height=\"44\" rx=\"8\" fill=\"#3C2C1E\"/><ellipse cx=\"435\" cy=\"358\" rx=\"85\" ry=\"70\" fill=\"#B06A30\"/><ellipse cx=\"435\" cy=\"358\" rx=\"45\" ry=\"40\" fill=\"#96562460\"/><circle cx=\"435\" cy=\"358\" r=\"15\" fill=\"#3C2C1E\"/></svg>", "hints": [{"k": "a musician", "s": "This person is a musician."}, {"k": "an instrument", "s": "A musician needs an instrument, a microphone and sheet music."}, {"k": "to make the sound", "s": "The instrument makes the music and the microphone makes it loud enough."}, {"k": "on a stage", "s": "Musicians work on a stage, in a studio, or they teach music."}, {"k": "to entertain us", "s": "We need musicians because music makes people happy."}]}];
+let order = HOUSES.map((_,i)=>i);
+let at = 0;
+const state = HOUSES.map(()=>({open:0, sent:[false,false,false,false,false], said:[false,false,false,false,false]}));
+
+const $ = id => document.getElementById(id);
+
+function speak(text){
+  if(!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.82; u.pitch = 1;
+  speechSynthesis.speak(u);
+}
+
+function sayBtn(text){
+  const b = document.createElement('button');
+  b.className = 'say'; b.textContent = 'Hear it';
+  b.setAttribute('aria-label','Hear: ' + text);
+  b.onclick = () => speak(text);
+  return b;
+}
+
+function render(){
+  const idx = order[at];
+  const h = HOUSES[idx], st = state[idx];
+
+  $('photo').innerHTML = h.svg;
+  $('cap').textContent = h.title;
+  $('count').textContent = 'Card ' + (at+1) + ' of ' + HOUSES.length;
+
+  const dots = $('dots'); dots.innerHTML = '';
+  order.forEach((hi,pos)=>{
+    const b = document.createElement('button');
+    b.className = 'dot' + (state[hi].said.every(Boolean)?' done':'') + (pos===at?' here':'');
+    b.title = 'Go to card ' + (pos+1);
+    b.setAttribute('aria-label','Go to card ' + (pos+1));
+    b.onclick = ()=>{ at = pos; render(); window.scrollTo({top:0}); };
+    dots.appendChild(b);
+  });
+
+  const ol = $('hints'); ol.innerHTML = '';
+  h.hints.forEach((hint,i)=>{
+    const li = document.createElement('li');
+    const n = document.createElement('button');
+    n.className='n'; n.textContent = i+1;
+    n.title = revealed(st,i) ? 'Hide this hint' : 'Show this hint';
+    n.setAttribute('aria-expanded', revealed(st,i) ? 'true' : 'false');
+    n.setAttribute('aria-label', (revealed(st,i)?'Hide':'Show') + ' hint ' + (i+1));
+    n.onclick = ()=>{ toggle(st,i); render(); };
+    const body = document.createElement('div'); body.className='body';
+
+    if(!revealed(st,i)){
+      li.appendChild(n);
+      const p = document.createElement('button'); p.className='shush';
+      p.textContent='Hint ' + (i+1);
+      p.setAttribute('aria-label','Show hint ' + (i+1));
+      p.onclick = ()=>{ toggle(st,i); render(); };
+      body.appendChild(p);
+    } else {
+      li.className = st.said[i] ? 'said' : 'open';
+      li.appendChild(n);
+      const k = document.createElement('p'); k.className='kw'; k.textContent = hint.k;
+      body.appendChild(k);
+
+      const row1 = document.createElement('div'); row1.className='row';
+      row1.appendChild(sayBtn(hint.k));
+      if(!st.sent[i]){
+        const b2 = document.createElement('button');
+        b2.textContent = 'Show the whole sentence';
+        b2.onclick = ()=>{ st.sent[i]=true; render(); };
+        row1.appendChild(b2);
+      }
+      body.appendChild(row1);
+
+      if(st.sent[i]){
+        const s = document.createElement('p'); s.className='sent'; s.textContent = hint.s;
+        body.appendChild(s);
+        const row2 = document.createElement('div'); row2.className='row';
+        row2.appendChild(sayBtn(hint.s));
+        const t = document.createElement('button');
+        t.className='tick';
+        t.setAttribute('aria-pressed', st.said[i] ? 'true':'false');
+        t.textContent = st.said[i] ? 'Said it' : 'She said it';
+        t.onclick = ()=>{ st.said[i] = !st.said[i]; render(); };
+        row2.appendChild(t);
+        const hd = document.createElement('button');
+        hd.textContent = 'Hide this hint';
+        hd.onclick = ()=>{ toggle(st,i); render(); };
+        row2.appendChild(hd);
+        body.appendChild(row2);
+      }
+    }
+    li.appendChild(body);
+    ol.appendChild(li);
+  });
+
+  const total = state.reduce((a,s)=>a + s.said.filter(Boolean).length, 0);
+  $('tally').textContent = total === 0
+    ? 'Nothing ticked off yet.'
+    : total + (total===1 ? ' sentence' : ' sentences') + ' practised so far.';
+
+  $('prev').disabled = at === 0;
+}
+
+function revealed(st,i){ return !!(st.shownAt && st.shownAt[i]); }
+function toggle(st,i){
+  st.shownAt = st.shownAt || {};
+  if(st.shownAt[i]){ st.shownAt[i] = false; st.sent[i] = false; }
+  else { st.shownAt[i] = true; }
+}
+function resetHouse(st){
+  st.shownAt = {};
+  st.sent = [false,false,false,false,false];
+  st.said = [false,false,false,false,false];
+}
+function resetAll(){ state.forEach(resetHouse); }
+
+$('hideall').onclick = ()=>{ const st = state[order[at]]; st.shownAt = {}; st.sent=[false,false,false,false,false]; render(); window.scrollTo({top:0}); };
+$('done').onclick = ()=>{
+  const st = state[order[at]];
+  st.said = [true,true,true,true,true];
+  st.shownAt = {}; st.sent=[false,false,false,false,false];
+  if(at < HOUSES.length-1){ at++; }
+  render(); window.scrollTo({top:0});
+};
+$('restart').onclick = ()=>{ resetAll(); at = 0; render(); window.scrollTo({top:0}); };
+$('next').onclick = ()=>{ at = (at+1) % HOUSES.length; render(); window.scrollTo({top:0}); };
+$('prev').onclick = ()=>{ if(at>0){ at--; render(); window.scrollTo({top:0}); } };
+$('shuffle').onclick = ()=>{
+  for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+  at = 0; render(); window.scrollTo({top:0});
+};
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName === 'BUTTON' && e.key === ' ') return;
+  if(e.key === 'ArrowRight') $('next').click();
+  if(e.key === 'ArrowLeft') $('prev').click();
+});
+
+render();
+</script>
+</body>
+</html>
